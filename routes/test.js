@@ -4,10 +4,12 @@ import {
   purchaseModel,
   shippingModel,
 } from "../models/index.js";
+
 const router = Router();
 
 /**
  * Statment 1
+ * add customers and their details
  * /customer
  */
 router.post("/addcustomer", async (req, res) => {
@@ -19,6 +21,7 @@ router.post("/addcustomer", async (req, res) => {
 
 /**
  * Statment 2
+ * Purchase Order
  */
 router.post("/purchase", async (req, res) => {
   let purchase = new purchaseModel(req.body);
@@ -35,6 +38,7 @@ router.post("/purchase", async (req, res) => {
 
 /**
  * Statment 3
+ * Shipping Details
  * /ship
  */
 router.post("/shipping", async (req, res) => {
@@ -46,9 +50,11 @@ router.post("/shipping", async (req, res) => {
 
 /**
  * Statment 4, 5
+ * get customers which have shipment with city filter
+ * get customers with all purchase order
  * /orders
  */
-router.get("/allorders", (req, res) => {
+router.get("/allorders", async (req, res) => {
   let { city } = req.query;
 
   /**
@@ -77,24 +83,28 @@ router.get("/allorders", (req, res) => {
     },
   ];
 
+  // $cond is not allowed in free-tier of Atlas, manually add the condition
   if (city) {
-    customerModel
-      .aggregate([
-        {
-          $match: {
-            city,
-          },
+    let data = await customerModel.aggregate([
+      {
+        $match: {
+          city: city,
         },
-        ...commonPipelineStages,
-      ])
-      .then((data) => res.json(data));
+      },
+      ...commonPipelineStages,
+    ]);
+
+    res.json(data);
   } else {
-    customerModel
-      .aggregate(commonPipelineStages)
-      .then((data) => res.json(data));
+    let data = await customerModel.aggregate(commonPipelineStages);
+    res.json(data);
   }
 });
 
+/**
+ * Statment 6
+ * Get customer with all purchase order and shipment details
+ */
 router.get("/shipping", async (req, res) => {
   let x = await customerModel.aggregate([
     {
