@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import connection from "../util/connection.js";
-connection;
 
 let purchaseSchema = new mongoose.Schema({
   customerId: String,
