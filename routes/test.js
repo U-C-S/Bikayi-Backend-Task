@@ -95,59 +95,48 @@ router.get("/allorders", (req, res) => {
   }
 });
 
-router.get("/shipping", (req, res) => {
-  shippingModel
-    .aggregate([
-      {
-        $addFields: {
-          purchaseId: { $toObjectId: "$purchaseId" },
-          customerId: { $toObjectId: "$customerId" },
-        },
+router.get("/shipping", async (req, res) => {
+  let x = await customerModel.aggregate([
+    {
+      $addFields: {
+        customerId: { $toString: "$_id" },
       },
-      {
-        $lookup: {
-          from: "purchases",
-          localField: "purchaseId",
-          foreignField: "_id",
-          as: "purchases",
-        },
+    },
+    {
+      $lookup: {
+        from: "purchases",
+        localField: "customerId",
+        foreignField: "customerId",
+        as: "purchaseOrder",
       },
-      { $unwind: "$purchases" },
-      {
-        $lookup: {
-          from: "customers",
-          localField: "customerId",
-          foreignField: "_id",
-          as: "customers",
-        },
+    },
+    { $unwind: "$purchaseOrder" },
+    {
+      $addFields: {
+        purchaseId_temp: { $toString: "$purchaseOrder._id" },
       },
-      { $unwind: "$customers" },
-      {
-        $project: {
-          customer: {
-            customerName: "$customers.customerName",
-            email: "$customers.email",
-            phone: "$customers.phone",
-            city: "$customers.city",
-            purchaseOrder: {
-              purchaseId: "$purchases._id",
-              customerId: "$customers._id",
-              productName: "$purchases.productName",
-              pricing: "$purchases.pricing",
-              mrp: "$purchases.mrp",
-              quantity: "$purchases.quantity",
-              shipmentDetails: {
-                shipmentId: "$_id",
-                address: "$address",
-                city: "$city",
-                state: "$state",
-              },
-            },
-          },
-        },
+    },
+    {
+      $lookup: {
+        from: "shippings",
+        localField: "purchaseId_temp",
+        foreignField: "purchaseId",
+        as: "purchaseOrder.shipmentDetail",
       },
-    ])
-    .then((data) => res.json(data));
+    },
+    {
+      $group: {
+        _id: "$customerId",
+        customerName: { $first: "$customerName" },
+        email: { $first: "$email" },
+        phone: { $first: "$phone" },
+        city: { $first: "$city" },
+        purchaseOrder: { $push: "$purchaseOrder" },
+      },
+    },
+  ]);
+
+  res.json(x);
 });
 
 export default router;
