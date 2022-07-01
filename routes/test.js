@@ -6,84 +6,89 @@ import {
 } from "../models/index.js";
 const router = Router();
 
-router.post("/customer/", (req, res) => {
+/**
+ * Statment 1
+ */
+router.post("/customer", async (req, res) => {
   let customer = new customerModel(req.body);
-  customer.save().then((data) => res.json(data));
+
+  let customerData = await customer.save();
+  res.json(customerData);
 });
 
-router.post("/purchase/", (req, res) => {
+/**
+ * Statment 2
+ */
+router.post("/purchase", async (req, res) => {
   let purchase = new purchaseModel(req.body);
+
   if (req.body.mrp < req.body.pricing) {
-    return res.status(400).send("Pricing cannot be greater than MRP");
+    return res
+      .status(400)
+      .send({ message: "Pricing cannot be greater than MRP" });
   } else {
-    purchase.save().then((data) => res.json(data));
+    let purchaseInfo = await purchase.save();
+    res.json(purchaseInfo);
   }
 });
 
-router.post("/ship/", (req, res) => {
+/**
+ * Statment 3
+ */
+router.post("/ship", async (req, res) => {
   let ship = new shippingModel(req.body);
-  ship.save().then((data) => res.json(data));
+
+  let shipmentInfo = await ship.save();
+  res.json(shipmentInfo);
 });
 
+/**
+ * Statment 4
+ */
 router.get("/orders", (req, res) => {
-  // As mongo Atlas free tire doesn't support $cond operator, I am using if-else statement.
-  if (req.query.city !== undefined) {
+  let { city } = req.query;
+
+  /**
+   * @type {import("mongoose").PipelineStage[]}
+   */
+  let commonPipelineStages = [
+    { $addFields: { customerId: { $toString: "$_id" } } },
+    {
+      $lookup: {
+        from: "purchases",
+        localField: "customerId",
+        foreignField: "customerId",
+        as: "purchases",
+      },
+    },
+    { $unwind: "$purchases" },
+    {
+      $project: {
+        _id: 1,
+        customerId: 1,
+        customerName: 1,
+        email: 1,
+        phone: 1,
+        city: 1,
+        purchases: "$purchases",
+      },
+    },
+  ];
+
+  if (city) {
     customerModel
       .aggregate([
         {
           $match: {
-            city: `${req.query.city}`,
+            city,
           },
         },
-        { $addFields: { customerId: { $toString: "$_id" } } },
-        {
-          $lookup: {
-            from: "purchases",
-            localField: "customerId",
-            foreignField: "customerId",
-            as: "purchases",
-          },
-        },
-        { $unwind: "$purchases" },
-        {
-          $project: {
-            _id: 1,
-            customerId: 1,
-            customerName: 1,
-            email: 1,
-            phone: 1,
-            city: 1,
-            purchases: "$purchases",
-          },
-        },
+        ...commonPipelineStages,
       ])
       .then((data) => res.json(data));
   } else {
-    console.log("No query");
     customerModel
-      .aggregate([
-        { $addFields: { customerId: { $toString: "$_id" } } },
-        {
-          $lookup: {
-            from: "purchases",
-            localField: "customerId",
-            foreignField: "customerId",
-            as: "purchases",
-          },
-        },
-        { $unwind: "$purchases" },
-        {
-          $project: {
-            _id: 1,
-            customerId: 1,
-            customerName: 1,
-            email: 1,
-            phone: 1,
-            city: 1,
-            purchases: "$purchases",
-          },
-        },
-      ])
+      .aggregate(commonPipelineStages)
       .then((data) => res.json(data));
   }
 });
