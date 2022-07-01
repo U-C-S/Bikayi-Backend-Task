@@ -1,11 +1,10 @@
 import "./util/connection.js";
 import express, { json } from "express";
-import oldRouter from "./routes/index.js";
-// import cors from "cors";
+import justOneRouter from "./routes/allroutes.js";
 
 const app = express();
 
 app.use(json());
-app.use("/api", oldRouter);
+app.use("/api", justOneRouter);
 
 export default app;

@@ -8,5 +8,3 @@ connection.on("connected", () =>
   console.log("database is connected successfully")
 );
 connection.on("error", console.error.bind(console, "connection error:"));
-
-export default connection;
