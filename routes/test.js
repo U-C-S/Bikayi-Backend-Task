@@ -8,8 +8,9 @@ const router = Router();
 
 /**
  * Statment 1
+ * /customer
  */
-router.post("/customer", async (req, res) => {
+router.post("/addcustomer", async (req, res) => {
   let customer = new customerModel(req.body);
 
   let customerData = await customer.save();
@@ -34,8 +35,9 @@ router.post("/purchase", async (req, res) => {
 
 /**
  * Statment 3
+ * /ship
  */
-router.post("/ship", async (req, res) => {
+router.post("/shipping", async (req, res) => {
   let ship = new shippingModel(req.body);
 
   let shipmentInfo = await ship.save();
@@ -43,9 +45,10 @@ router.post("/ship", async (req, res) => {
 });
 
 /**
- * Statment 4
+ * Statment 4, 5
+ * /orders
  */
-router.get("/orders", (req, res) => {
+router.get("/allorders", (req, res) => {
   let { city } = req.query;
 
   /**
@@ -63,14 +66,13 @@ router.get("/orders", (req, res) => {
     },
     { $unwind: "$purchases" },
     {
-      $project: {
-        _id: 1,
-        customerId: 1,
-        customerName: 1,
-        email: 1,
-        phone: 1,
-        city: 1,
-        purchases: "$purchases",
+      $group: {
+        _id: "$_id",
+        customerName: { $first: "$customerName" },
+        email: { $first: "$email" },
+        phone: { $first: "$phone" },
+        city: { $first: "$city" },
+        purchaseOrders: { $push: "$purchases" },
       },
     },
   ];
