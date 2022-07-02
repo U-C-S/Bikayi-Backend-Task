@@ -1,66 +1,61 @@
 import { Router } from "express";
-import {
-  customerModel,
-  purchaseModel,
-  shippingModel,
-} from "../models/index.js";
+import { customerModel, shippingModel } from "../models/index.js";
 
 const router = Router();
 
 /**
- * Statment 1
- * add customers and their details
- * /customer
- */
-router.post("/addcustomer", async (req, res) => {
-  let customer = new customerModel(req.body);
-
-  let customerData = await customer.save();
-  res.json(customerData);
-});
-
-/**
- * Statment 2
- * Purchase Order
- */
-router.post("/purchase", async (req, res) => {
-  let purchase = new purchaseModel(req.body);
-
-  if (req.body.mrp < req.body.pricing) {
-    return res
-      .status(400)
-      .send({ message: "Pricing cannot be greater than MRP" });
-  } else {
-    let purchaseInfo = await purchase.save();
-    res.json(purchaseInfo);
-  }
-});
-
-/**
- * Statment 3
- * Shipping Details
- * /ship
- */
-router.post("/shipping", async (req, res) => {
-  let ship = new shippingModel(req.body);
-
-  let shipmentInfo = await ship.save();
-  res.json(shipmentInfo);
-});
-
-/**
- * Statment 4, 5
+ * Statment 4
  * get customers which have shipment with city filter
+ */
+router.get("/shipments/city", async (req, res) => {
+  let { name } = req.query;
+
+  let shipmentData = await shippingModel.aggregate([
+    {
+      $match: {
+        city: name,
+      },
+    },
+    {
+      $addFields: {
+        customerId: { $toObjectId: "$customerId" },
+        purchaseId: { $toObjectId: "$purchaseId" },
+      },
+    },
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customerId",
+        foreignField: "_id",
+        as: "customerInfo",
+      },
+    },
+    {
+      $lookup: {
+        from: "purchases",
+        localField: "purchaseId",
+        foreignField: "_id",
+        as: "purchaseInfo",
+      },
+    },
+    {
+      $unset: ["customerId", "purchaseId", "__v"],
+    },
+  ]);
+
+  res.json(shipmentData);
+});
+
+/**
+ * Statment 5
  * get customers with all purchase order
  * /orders
  */
-router.get("/allorders", async (req, res) => {
-  let { city } = req.query;
-
+router.get("/allpurchases", async (req, res) => {
   /**
    * @type {import("mongoose").PipelineStage[]}
    */
-  let commonPipelineStages = [
+  let PipelineStages = [
     { $addFields: { customerId: { $toString: "$_id" } } },
     {
       $lookup: {
@@ -83,29 +78,15 @@ router.get("/allorders", async (req, res) => {
     },
   ];
 
-  // $cond is not allowed in free-tier of Atlas, manually add the condition
-  if (city) {
-    let data = await customerModel.aggregate([
-      {
-        $match: {
-          city: city,
-        },
-      },
-      ...commonPipelineStages,
-    ]);
-
-    res.json(data);
-  } else {
-    let data = await customerModel.aggregate(commonPipelineStages);
-    res.json(data);
-  }
+  let data = await customerModel.aggregate(PipelineStages);
+  res.json(data);
 });
 
 /**
  * Statment 6
  * Get customer with all purchase order and shipment details
  */
-router.get("/shipping", async (req, res) => {
+router.get("/all", async (req, res) => {
   let x = await customerModel.aggregate([
     {
       $addFields: {
@@ -149,4 +130,4 @@ router.get("/shipping", async (req, res) => {
   res.json(x);
 });
 
-export default router;
+export { router as ordersRouter };
