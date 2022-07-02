@@ -49,7 +49,6 @@ router.get("/shipments/city", async (req, res) => {
 /**
  * Statment 5
  * get customers with all purchase order
- * /orders
  */
 router.get("/allpurchases", async (req, res) => {
   /**

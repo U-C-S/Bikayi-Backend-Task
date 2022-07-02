@@ -23,7 +23,6 @@ router.post("/purchase", async (req, res) => {
 /**
  * Statment 3
  * Shipping Details
- * /ship
  */
 router.post("/shipping", async (req, res) => {
   let ship = new shippingModel(req.body);
